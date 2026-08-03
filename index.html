@@ -1,0 +1,577 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Harmesh Weighment Calculator</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+padding:15px;
+}
+
+.box{
+max-width:450px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:15px;
+box-shadow:0 0 10px #aaa;
+}
+
+h2{
+text-align:center;
+}
+
+input,select,button{
+
+width:100%;
+padding:12px;
+margin:8px 0;
+font-size:18px;
+border-radius:8px;
+border:1px solid #aaa;
+
+}
+
+
+button{
+
+background:#0066ff;
+color:white;
+border:none;
+
+}
+
+
+.result{
+
+background:#d9ffd9;
+padding:20px;
+border-radius:10px;
+text-align:center;
+font-size:25px;
+font-weight:bold;
+
+}
+
+
+footer{
+
+text-align:center;
+margin-top:20px;
+color:#555;
+
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="box">
+
+
+<h2>
+Weighment Calculator
+</h2>
+
+
+<div id="loginBox">
+
+
+<input id="mobile"
+placeholder="Enter Mobile Number">
+
+
+<div id="recaptcha"></div>
+
+
+<button onclick="sendOTP()">
+Send OTP
+</button>
+
+
+
+<input id="otp"
+placeholder="Enter OTP">
+
+
+<button onclick="verifyOTP()">
+Verify OTP
+</button>
+
+
+</div>
+
+
+
+
+<div id="calculator"
+style="display:none">
+
+
+<select id="sku1" onchange="calc()">
+
+<option value="50.120">
+50.120 KG
+</option>
+
+<option value="25.120">
+25.120 KG
+</option>
+
+</select>
+
+
+
+<input id="bags1"
+type="number"
+placeholder="Bags 1"
+oninput="calc()">
+
+
+
+
+
+<select id="sku2" onchange="calc()">
+
+<option value="50.120">
+50.120 KG
+</option>
+
+<option value="25.120">
+25.120 KG
+</option>
+
+</select>
+
+
+
+<input id="bags2"
+type="number"
+placeholder="Bags 2"
+oninput="calc()">
+
+
+
+
+
+<div class="result">
+
+TOTAL WEIGHT
+
+<br>
+
+<span id="total">
+0.000 KG
+</span>
+
+
+<br><br>
+
+TOTAL BAGS :
+
+<span id="bagTotal">
+0
+</span>
+
+
+</div>
+
+
+
+<button onclick="resetData()">
+RESET
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+<footer>
+
+© 2026 Harmesh Kumar<br>
+All Rights Reserved
+
+</footer>
+
+
+
+
+<script type="module">
+
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+
+import {
+
+getAuth,
+RecaptchaVerifier,
+signInWithPhoneNumber
+
+}
+
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+
+
+import {
+
+getDatabase,
+ref,
+set,
+get
+
+}
+
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+
+
+
+
+// YOUR FIREBASE CONFIG
+
+
+const firebaseConfig = {
+
+
+apiKey: "AIzaSyBleiQ6oSse-mF00_rd7keZGN93r_Eorwc",
+
+authDomain: "mobil-otp-verification.firebaseapp.com",
+
+databaseURL:
+"https://mobil-otp-verification-default-rtdb.firebaseio.com",
+
+projectId: "mobil-otp-verification",
+
+storageBucket:
+"mobil-otp-verification.firebasestorage.app",
+
+messagingSenderId:"562891080486",
+
+appId:
+"1:562891080486:web:3adcc0c00a5785f88437e7",
+
+measurementId:"G-B5YDKCR6WF"
+
+
+};
+
+
+
+
+
+const app =
+initializeApp(firebaseConfig);
+
+
+
+const auth =
+getAuth(app);
+
+
+
+const database =
+getDatabase(app);
+
+
+
+
+let confirmationResult;
+
+
+
+
+window.recaptchaVerifier =
+
+new RecaptchaVerifier(
+
+auth,
+
+'recaptcha',
+
+{
+
+size:'normal'
+
+}
+
+);
+
+
+
+
+
+
+// SEND OTP
+
+
+window.sendOTP=function(){
+
+
+let mobile =
+document.getElementById("mobile").value;
+
+
+if(mobile.length!=10){
+
+alert("Enter valid mobile number");
+
+return;
+
+}
+
+
+
+let number="+91"+mobile;
+
+
+
+signInWithPhoneNumber(
+
+auth,
+
+number,
+
+window.recaptchaVerifier
+
+)
+
+.then(result=>{
+
+
+confirmationResult=result;
+
+alert("OTP Sent Successfully");
+
+
+})
+
+.catch(error=>{
+
+
+alert(error.message);
+
+
+});
+
+
+}
+
+
+
+
+
+
+
+
+// VERIFY OTP + DEVICE LOCK
+
+
+window.verifyOTP=async function(){
+
+
+
+let code=
+document.getElementById("otp").value;
+
+
+
+try{
+
+
+let result =
+await confirmationResult.confirm(code);
+
+
+
+let uid =
+result.user.uid;
+
+
+
+let deviceID =
+navigator.userAgent;
+
+
+
+let deviceRef =
+ref(database,"devices/"+uid);
+
+
+
+let oldData =
+await get(deviceRef);
+
+
+
+
+
+if(oldData.exists()){
+
+
+
+if(oldData.val().deviceID
+!==deviceID){
+
+
+
+alert(
+"This Device Is Not Authorized"
+);
+
+
+
+return;
+
+
+}
+
+
+
+}
+
+else{
+
+
+await set(
+
+deviceRef,
+
+{
+
+
+mobile:
+result.user.phoneNumber,
+
+
+deviceID:deviceID,
+
+
+date:
+new Date().toString()
+
+
+}
+
+
+);
+
+
+}
+
+
+
+document.getElementById("loginBox")
+.style.display="none";
+
+
+document.getElementById("calculator")
+.style.display="block";
+
+
+
+alert("Login Successful");
+
+
+}
+
+catch(e){
+
+
+alert(
+"Invalid OTP"
+);
+
+
+}
+
+
+}
+
+
+
+
+
+
+
+
+
+// CALCULATOR
+
+
+window.calc=function(){
+
+
+let weight =
+
+(Number(sku1.value) *
+Number(bags1.value||0))
+
++
+
+(Number(sku2.value) *
+Number(bags2.value||0));
+
+
+
+document.getElementById("total")
+.innerHTML=
+
+weight.toFixed(3)+" KG";
+
+
+
+document.getElementById("bagTotal")
+.innerHTML=
+
+Number(bags1.value||0)
++
+Number(bags2.value||0);
+
+
+}
+
+
+
+
+
+
+window.resetData=function(){
+
+
+bags1.value="";
+
+bags2.value="";
+
+
+calc();
+
+
+}
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
